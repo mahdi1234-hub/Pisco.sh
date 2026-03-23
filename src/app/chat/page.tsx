@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, UserButton } from "@clerk/nextjs";
+import { useUser, useAuth, UserButton, RedirectToSignIn } from "@clerk/nextjs";
 import { NivoChart, NivoDashboard } from "@/components/NivoCharts";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PdfPreview, useReportGenerator } from "@/components/PdfGenerator";
@@ -73,10 +73,30 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { generateReport } = useReportGenerator();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
   const { user } = useUser();
 
   const userName = user?.firstName || user?.username || "User";
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
+
+  // Redirect to sign-in if not authenticated
+  if (isAuthLoaded && !isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  // Show loading while Clerk is initializing
+  if (!isAuthLoaded) {
+    return (
+      <div className="relative w-full h-screen flex items-center justify-center">
+        <div className="absolute inset-0 z-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/46011e44-1f9d-4c5e-b716-300b8ce1381e_3840w.jpg" alt="Background" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        </div>
+        <div className="relative z-10 text-white/60 text-sm uppercase tracking-widest">Loading...</div>
+      </div>
+    );
+  }
 
   const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, []);
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
