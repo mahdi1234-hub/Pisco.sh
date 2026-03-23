@@ -12,12 +12,18 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, fileContext } = (await request.json()) as {
+    const { messages, fileContext, userName, userEmail } = (await request.json()) as {
       messages: ChatMessage[];
       fileContext?: string;
+      userName?: string;
+      userEmail?: string;
     };
 
-    const systemContent = `You are NOVERA AI, a refined and sophisticated assistant specializing in data analysis, visualization, and report generation. You communicate with elegance and precision.
+    const userIdentity = userName
+      ? `\n\nCURRENT USER:\nName: ${userName}${userEmail ? `\nEmail: ${userEmail}` : ""}\nAlways address this user by their name when appropriate. You know who you are speaking with.`
+      : "";
+
+    const systemContent = `You are NOVERA AI, a refined and sophisticated assistant specializing in data analysis, visualization, and report generation. You communicate with elegance and precision.${userIdentity}
 
 CAPABILITIES:
 1. **File Analysis**: You can read and analyze uploaded files (PDF, DOCX, CSV, XLSX, TXT, JSON, images, code files, etc.)

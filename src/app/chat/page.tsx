@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useUser, useAuth, UserButton, RedirectToSignIn } from "@clerk/nextjs";
 import { NivoChart, NivoDashboard } from "@/components/NivoCharts";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PdfPreview, useReportGenerator } from "@/components/PdfGenerator";
@@ -72,10 +73,34 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { generateReport } = useReportGenerator();
+  const { isSignedIn, isLoaded: isAuthLoaded } = useAuth();
+  const { user } = useUser();
+
+  const userName = user?.firstName || user?.username || "User";
+  const userEmail = user?.primaryEmailAddress?.emailAddress || "";
 
   const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, []);
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Redirect to sign-in if not authenticated (must be after all hooks)
+  if (isAuthLoaded && !isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  // Show loading while Clerk is initializing
+  if (!isAuthLoaded) {
+    return (
+      <div className="relative w-full h-screen flex items-center justify-center">
+        <div className="absolute inset-0 z-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/46011e44-1f9d-4c5e-b716-300b8ce1381e_3840w.jpg" alt="Background" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+        </div>
+        <div className="relative z-10 text-white/60 text-sm uppercase tracking-widest">Loading...</div>
+      </div>
+    );
+  }
 
   const handleFileUpload = async (fileList: FileList) => {
     setIsUploading(true);
@@ -237,7 +262,7 @@ export default function ChatPage() {
     try {
       const fileContext = currentFiles.length > 0 ? currentFiles.map((f) => "--- FILE: " + f.name + " (" + f.type + ") ---\n" + f.content).join("\n\n") : undefined;
       const apiMessages = updatedMessages.map((m) => ({ role: m.role, content: m.content }));
-      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, fileContext }) });
+      const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: apiMessages, fileContext, userName, userEmail }) });
       if (!response.ok) throw new Error("Failed to send message");
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -301,9 +326,12 @@ export default function ChatPage() {
           <h2 className="text-white text-sm font-light tracking-widest uppercase" style={{ fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", letterSpacing: "0.2em" }}>NOVERA</h2>
           <p className="text-white/40 text-[10px] uppercase tracking-widest mt-1">AI Assistant</p>
         </div>
-        <button onClick={() => { setMessages([]); setFiles([]); }} className="text-white/60 hover:text-white transition-colors duration-300">
-          <span className="text-[10px] uppercase tracking-widest font-medium">Clear</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setMessages([]); setFiles([]); }} className="text-white/60 hover:text-white transition-colors duration-300">
+            <span className="text-[10px] uppercase tracking-widest font-medium">Clear</span>
+          </button>
+          <UserButton />
+        </div>
       </div>
 
       <div className="relative z-10 flex-1 overflow-y-auto chat-scroll px-4 md:px-8 py-6">
@@ -311,7 +339,7 @@ export default function ChatPage() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full min-h-[50vh] text-center">
               <div className="space-y-6">
-                <h3 className="text-white/80 text-2xl md:text-3xl font-light" style={{ fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", letterSpacing: "-0.03em" }}>How may I assist you?</h3>
+                <h3 className="text-white/80 text-2xl md:text-3xl font-light" style={{ fontFamily: "var(--font-dm-sans), 'DM Sans', sans-serif", letterSpacing: "-0.03em" }}>Welcome, {userName}. How may I assist you?</h3>
                 <p className="text-white/40 text-sm font-light max-w-md">Upload files, ask for data analysis, generate charts, create dashboards, build professional PDF reports, or search the web.</p>
                 <div className="flex flex-wrap justify-center gap-3 mt-8">
                   {[
