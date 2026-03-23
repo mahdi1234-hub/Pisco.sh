@@ -79,7 +79,11 @@ export default function ChatPage() {
   const userName = user?.firstName || user?.username || "User";
   const userEmail = user?.primaryEmailAddress?.emailAddress || "";
 
-  // Redirect to sign-in if not authenticated
+  const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, []);
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Redirect to sign-in if not authenticated (must be after all hooks)
   if (isAuthLoaded && !isSignedIn) {
     return <RedirectToSignIn />;
   }
@@ -97,10 +101,6 @@ export default function ChatPage() {
       </div>
     );
   }
-
-  const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, []);
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
-  useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleFileUpload = async (fileList: FileList) => {
     setIsUploading(true);
